@@ -28,7 +28,9 @@ export async function getWorkflowByAppId(appId: string) {
 export async function addWorkflow(
   workflow: Omit<Workflow, 'id' | 'steps' | 'description'>
 ) {
-  const result = await sql<[Workflow]>`INSERT INTO workflows ${sql(workflow)}`
+  const result = await sql<[Workflow]>`INSERT INTO workflows ${sql(
+    workflow
+  )} RETURNING *`
   return result[0]
 }
 

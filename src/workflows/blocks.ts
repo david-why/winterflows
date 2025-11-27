@@ -83,7 +83,7 @@ function generateStepEditBlocks<T extends keyof WorkflowStepMap>(
                     type: 'plain_text',
                     text: 'User that started this workflow',
                   },
-                  value: '$!{ctx.user_id}',
+                  value: '$!{ctx.trigger_user_id}',
                 },
               ],
             },

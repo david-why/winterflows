@@ -2,6 +2,7 @@ import type { BlockElementAction, SlackAction } from '@slack/bolt'
 import { getWorkflowById, updateWorkflow } from '../database/workflows'
 import { getWorkflowSteps } from '../utils/workflows'
 import { updateHomeTab } from './blocks'
+import { startWorkflow } from './execute'
 
 export async function handleInteraction(interaction: SlackAction) {
   if (interaction.type === 'block_actions') {
@@ -26,6 +27,14 @@ export async function handleInteraction(interaction: SlackAction) {
       await updateWorkflow(workflow)
 
       await updateHomeTab(workflow, interaction.user.id)
+    } else if (actionId === 'run_workflow_home') {
+      if (action.type !== 'button') return
+
+      const { id } = JSON.parse(action.value!) as { id: number }
+      const workflow = await getWorkflowById(id)
+      if (!workflow) return
+
+      await startWorkflow(workflow, interaction.user.id)
     }
   }
 }
