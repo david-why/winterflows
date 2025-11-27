@@ -16,6 +16,8 @@ export async function handleWorkflowEvent({
   if (!workflow.access_token) return
 
   if (event.type === 'app_home_opened') {
+    if (event.tab !== 'home') return
+
     const blocks =
       event.user === workflow.creator_user_id
         ? await generateWorkflowEditView(workflow)

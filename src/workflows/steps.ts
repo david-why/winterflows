@@ -18,15 +18,15 @@ export type StepIOSpec<
   }
 }
 
-export type StepSpec<
+type StepSpec<
   Inputs extends Record<string, string> = Record<string, string>,
   Outputs = void
 > = {
-  id: string
+  name: string
   inputs: StepIOSpec<Inputs>
 } & (Outputs extends {} ? { outputs: StepIOSpec<Outputs> } : {})
 
-export type WorkflowStep<
+export type WorkflowStepSpec<
   Inputs extends Record<string, string> = Record<string, string>,
   Outputs = void
 > = {
@@ -39,7 +39,7 @@ function defineStep<
 >(
   func: StepFunction<Inputs, Outputs>,
   spec: StepSpec<Inputs, Outputs>
-): WorkflowStep<Inputs, Outputs> {
+): WorkflowStepSpec<Inputs, Outputs> {
   return { func, ...spec }
 }
 
@@ -61,9 +61,9 @@ async function sendMessageToUser(
 
 // end steps
 
-const steps: WorkflowStep<any, any>[] = [
-  defineStep(sendMessageToUser, {
-    id: 'test-dm-user',
+const steps = {
+  'test-dm-user': defineStep(sendMessageToUser, {
+    name: 'Send test message to user',
     inputs: {
       user_id: {
         name: 'User to send a message to',
@@ -79,5 +79,7 @@ const steps: WorkflowStep<any, any>[] = [
       },
     },
   }),
-]
+} as const
+
 export default steps
+export type WorkflowStepMap = typeof steps

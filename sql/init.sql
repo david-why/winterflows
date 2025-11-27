@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS workflows (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT 'A brand new workflow',
     creator_user_id TEXT NOT NULL,
     app_id TEXT NOT NULL UNIQUE,
     client_id TEXT NOT NULL UNIQUE,
