@@ -7,6 +7,8 @@ import { getWorkflowByAppId, updateWorkflow } from './database/workflows'
 import { getVerifiedData } from './signature'
 import { handleWorkflowEvent } from './workflows/events'
 import { handleInteraction } from './workflows/interaction'
+import { handleCoreInteraction } from './core/interaction'
+import { getConfigToken, updateConfigToken } from './database/config_tokens'
 
 const PORT = process.env.PORT || '8000'
 const { SLACK_APP_ID } = process.env
@@ -110,24 +112,39 @@ Bun.serve({
         }
         const appId = unsafePayload.api_app_id
 
-        const workflow = await getWorkflowByAppId(appId)
-        if (!workflow) {
-          console.warn('Request to unknown app', unsafePayload)
-          return NOT_FOUND
+        if (appId === SLACK_APP_ID) {
+          const data = await getVerifiedData(req)
+          if (!data.success) {
+            console.warn(
+              `Signature verification failed for interaction:`,
+              unsafeData
+            )
+            return NOT_FOUND
+          }
+
+          const interaction = unsafePayload as SlackAction
+
+          handleCoreInteraction(interaction)
+        } else {
+          const workflow = await getWorkflowByAppId(appId)
+          if (!workflow) {
+            console.warn('Request to unknown app', unsafePayload)
+            return NOT_FOUND
+          }
+
+          const data = await getVerifiedData(req, workflow.signing_secret)
+          if (!data.success) {
+            console.warn(
+              `Signature verification failed for interaction:`,
+              unsafeData
+            )
+            return NOT_FOUND
+          }
+
+          const interaction = unsafePayload as SlackAction
+
+          handleInteraction(interaction)
         }
-
-        const data = await getVerifiedData(req, workflow.signing_secret)
-        if (!data.success) {
-          console.warn(
-            `Signature verification failed for interaction:`,
-            unsafeData
-          )
-          return NOT_FOUND
-        }
-
-        const interaction = unsafePayload as SlackAction
-
-        handleInteraction(interaction)
 
         return new Response()
       },
@@ -170,5 +187,21 @@ Bun.serve({
   },
   port: PORT,
 })
+
+setInterval(async () => {
+  const configToken = await getConfigToken()
+  if (!configToken) return
+  if (configToken.expires_at - Date.now() < 2 * 60 * 60 * 1000) {
+    console.log('Rotating config token')
+    const res = await slack.tooling.tokens.rotate({
+      refresh_token: configToken.refresh_token,
+    })
+    configToken.access_token = res.token!
+    configToken.refresh_token = res.refresh_token!
+    configToken.expires_at = res.exp!
+    await updateConfigToken(configToken)
+    console.log('Successfully rotated config token!')
+  }
+}, 60 * 60 * 1000)
 
 console.log(`Server started on http://localhost:${PORT}`)
