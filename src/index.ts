@@ -3,7 +3,11 @@ import type { SlackEvent } from '@slack/types'
 import slack from './clients/slack'
 import { handleCommand } from './core/commands'
 import { handleCoreEvent } from './core/events'
-import { getWorkflowByAppId, updateWorkflow } from './database/workflows'
+import {
+  getWorkflowByAppId,
+  getWorkflowById,
+  updateWorkflow,
+} from './database/workflows'
 import { getVerifiedData } from './signature'
 import { handleWorkflowEvent } from './workflows/events'
 import { handleInteraction } from './workflows/interaction'
@@ -185,10 +189,12 @@ Bun.serve({
       },
     },
 
-    '/workflow/:id': async () => {
-      return new Response(
-        'Please do not click on the link. Rather, click the "Run workflow" button beneath it!'
-      )
+    '/workflow/:id': async (req) => {
+      const id = parseInt(req.params.id)
+      if (isNaN(id)) return new Response('Workflow not found', { status: 404 })
+      const workflow = await getWorkflowById(id)
+      if (!workflow) return new Response('Workflow not found', { status: 404 })
+      return Response.redirect(`slack://app?id=${workflow.app_id}`)
     },
   },
   port: PORT,
