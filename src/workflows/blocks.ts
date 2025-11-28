@@ -34,7 +34,7 @@ export async function generateWorkflowEditView(
   workflow: Workflow
 ): Promise<KnownBlock[]> {
   const stepBlocks = getWorkflowSteps(workflow).flatMap((s, i) =>
-    generateStepEditBlocks(s, i, workflow)
+    generateWorkflowStepBlocks(s, i, workflow)
   )
 
   return [
@@ -70,14 +70,17 @@ export async function generateWorkflowEditView(
       type: 'actions',
       elements: [
         {
-          type: 'button',
-          text: {
+          type: 'static_select',
+          action_id: 'new_step',
+          placeholder: {
             type: 'plain_text',
             text: ':heavy_plus_sign: Add a step',
             emoji: true,
           },
-          action_id: 'new_step',
-          value: JSON.stringify({ id: workflow.id }),
+          options: Object.entries(steps).map(([id, spec]) => ({
+            text: { type: 'plain_text', text: spec.name },
+            value: JSON.stringify({ w: workflow.id, s: id }),
+          })),
         },
       ],
     },
@@ -85,7 +88,7 @@ export async function generateWorkflowEditView(
   ]
 }
 
-function generateStepEditBlocks<T extends keyof WorkflowStepMap>(
+function generateWorkflowStepBlocks<T extends keyof WorkflowStepMap>(
   step: WorkflowStep<T>,
   index: number,
   workflow: Workflow
@@ -142,14 +145,19 @@ export async function generateWorkflowView(
 
 export async function generateStepEditView(
   workflow: Workflow,
-  stepIndex: number
+  stepId: string,
+  overrideValues: Record<string, any> = {}
 ): Promise<ModalView> {
   const workflowSteps = getWorkflowSteps(workflow)
+  const stepIndex = workflowSteps.findIndex((s) => s.id === stepId)
   const step = workflowSteps[stepIndex]!
 
   const spec = steps[step.type_id as keyof WorkflowStepMap]!
 
   const inputBlocks = Object.entries(spec.inputs).flatMap(([key, def]) => {
+    let currentValue = step.inputs[key]
+      ? `\`${step.inputs[key]}\``
+      : '<no value>'
     return [
       {
         type: 'section',
@@ -157,11 +165,11 @@ export async function generateStepEditView(
           type: 'mrkdwn',
           text: `*${def.name}*${
             def.required ? ' _(required)_' : ''
-          }\nCurrent: \`${step.inputs[key]}\``,
+          }\nCurrent: ${currentValue}`,
         },
         accessory: getStepInputAccessory(workflow, stepIndex, key),
       },
-      ...generateStepInputBlocks(workflow, stepIndex, key),
+      ...generateStepInputBlocks(workflow, stepIndex, key, overrideValues),
     ] satisfies KnownBlock[]
   })
 
@@ -171,6 +179,9 @@ export async function generateStepEditView(
       type: 'plain_text',
       text: truncateText(`Editing step ${stepIndex + 1}`, 24),
     },
+    submit: { type: 'plain_text', text: 'Save' },
+    callback_id: 'step_edit',
+    private_metadata: JSON.stringify({ id: workflow.id, stepId: step.id }),
     blocks: [
       { type: 'header', text: { type: 'plain_text', text: spec.name } },
       { type: 'section', text: { type: 'mrkdwn', text: '*Inputs*' } },
@@ -182,7 +193,8 @@ export async function generateStepEditView(
 function generateStepInputBlocks(
   workflow: Workflow,
   index: number,
-  inputKey: string
+  inputKey: string,
+  overrideValues: Record<string, any> = {}
 ): KnownBlock[] {
   const workflowSteps = getWorkflowSteps(workflow)
   const step = workflowSteps[index]!
@@ -190,49 +202,47 @@ function generateStepInputBlocks(
   const input = spec.inputs[inputKey as keyof typeof spec.inputs]
   const currentValue = step.inputs[inputKey]!
 
+  const blocks: KnownBlock[] = []
+
+  const actionId = `update_input:${workflow.id}:${step.id}:${inputKey}`
   if (input.type === 'user' && !currentValue.startsWith('$')) {
-    return [
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'users_select',
-            initial_user: currentValue || undefined,
-            action_id: `update_input:${workflow.id}:${step.id}:${inputKey}`,
-          },
-        ],
+    blocks.push({
+      type: 'input',
+      label: { type: 'plain_text', text: ' ' },
+      element: {
+        type: 'users_select',
+        initial_user: overrideValues[actionId] || currentValue || undefined,
+        action_id: actionId,
       },
-    ]
+    })
   }
   if (input.type === 'channel' && !currentValue.startsWith('$')) {
-    return [
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'conversations_select',
-            initial_conversation: currentValue || undefined,
-            action_id: `update_input:${workflow.id}:${step.id}:${inputKey}`,
-          },
-        ],
+    blocks.push({
+      type: 'input',
+      label: { type: 'plain_text', text: ' ' },
+      element: {
+        type: 'conversations_select',
+        initial_conversation:
+          overrideValues[actionId] || currentValue || undefined,
+        action_id: actionId,
       },
-    ]
+    })
   }
   if (input.type === 'rich_text') {
-    return [
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'rich_text_input',
-            action_id: `update_input:${workflow.id}:${step.id}:${inputKey}`,
-          },
-        ],
+    blocks.push({
+      type: 'input',
+      label: { type: 'plain_text', text: ' ' },
+      element: {
+        type: 'rich_text_input',
+        initial_value:
+          overrideValues[actionId] ||
+          (currentValue ? JSON.parse(currentValue) : undefined),
+        action_id: actionId,
       },
-    ]
+    })
   }
 
-  return []
+  return blocks
 }
 
 function getStepInputAccessory(
@@ -302,7 +312,7 @@ function getStepInputAccessory(
       }
     }
 
-    let initial: PlainTextOption | undefined = undefined
+    let initial: PlainTextOption | undefined = groups[0]?.options[0]
     for (const group of groups) {
       for (const option of group.options) {
         if (JSON.parse(option.value!).text === step.inputs[inputKey]) {
@@ -313,37 +323,9 @@ function getStepInputAccessory(
 
     return {
       type: 'static_select',
-      action_id: `update_input:${workflow.id}:${step.id}:${inputKey}`,
+      action_id: `update_category:${workflow.id}:${step.id}:${inputKey}`,
       option_groups: groups,
       initial_option: initial,
     }
-  }
-}
-
-export async function generateNewStepView(
-  workflow: Workflow
-): Promise<ModalView> {
-  const blocks: KnownBlock[] = [
-    {
-      type: 'actions',
-      block_id: 'step',
-      elements: [
-        {
-          type: 'static_select',
-          action_id: 'value',
-          options: Object.entries(steps).map(([id, spec]) => ({
-            text: { type: 'plain_text', text: spec.name },
-            value: id,
-          })),
-        },
-      ],
-    },
-  ]
-  return {
-    type: 'modal',
-    title: { type: 'plain_text', text: 'Add a step' },
-    submit: { type: 'plain_text', text: 'Add' },
-    blocks,
-    private_metadata: JSON.stringify({ id: workflow.id }),
   }
 }
