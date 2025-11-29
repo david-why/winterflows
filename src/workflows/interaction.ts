@@ -4,6 +4,7 @@ import type {
   SlackViewAction,
   ViewStateValue,
 } from '@slack/bolt'
+import type { RichTextBlock } from '@slack/types'
 import slack from '../clients/slack'
 import {
   getWorkflowById,
@@ -166,7 +167,13 @@ export async function handleInteraction(
         interaction.view!.state!.values[blockId]![actionId]!.value =
           currentValue + textToAdd
       } else if (input.type === 'rich_text') {
-        const block = addTextToRichTextBlock(currentValue, textToAdd)
+        const block = addTextToRichTextBlock(
+          (currentValue as RichTextBlock) || {
+            type: 'rich_text',
+            elements: [],
+          },
+          textToAdd
+        )
         interaction.view!.state!.values[blockId]![actionId]!.rich_text_value =
           block
         JSON.stringify(block)
