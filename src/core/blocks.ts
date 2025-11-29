@@ -2,9 +2,9 @@ import type { HomeView, KnownBlock } from '@slack/types'
 import { getWorkflowsByCreator, type Workflow } from '../database/workflows'
 import slack from '../clients/slack'
 import { truncateText } from '../utils/formatting'
+import { WORKFLOW_APP_SCOPES } from '../consts'
 
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!
-const WORKFLOW_APP_SCOPES = process.env.WORKFLOW_APP_SCOPES!
 
 export async function updateCoreHomeTab(userId: string, search?: string) {
   const workflows = await getWorkflowsByCreator(userId)
@@ -64,9 +64,9 @@ async function generateCoreHomeView(
                       w.name
                     }*: <https://slack.com/oauth/v2/authorize?client_id=${
                       w.client_id
-                    }&scope=${encodeURIComponent(WORKFLOW_APP_SCOPES)}&state=${
-                      w.app_id
-                    }|install>`
+                    }&scope=${encodeURIComponent(
+                      WORKFLOW_APP_SCOPES.join(',')
+                    )}&state=${w.app_id}|install>`
                 )
                 .join('\n'),
           },

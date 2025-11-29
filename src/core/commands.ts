@@ -6,6 +6,7 @@ import type {
 import slack from '../clients/slack'
 import { addWorkflow } from '../database/workflows'
 import { getActiveConfigToken, respond } from '../utils/slack'
+import { WORKFLOW_APP_SCOPES } from '../consts'
 
 const { EXTERNAL_URL, SLACK_APP_ID } = process.env
 
@@ -83,7 +84,7 @@ function generateManifest(
     oauth_config: {
       redirect_urls: [`${EXTERNAL_URL}/oauth/callback`],
       scopes: {
-        bot: ['chat:write', 'chat:write.customize'],
+        bot: WORKFLOW_APP_SCOPES,
       },
     },
     settings: {

@@ -2,7 +2,8 @@ import { SQL, sql } from 'bun'
 
 export interface Trigger {
   id: number
-  execution_id: number
+  execution_id: number | null
+  workflow_id: number | null
   type: string
   val_string: string | null
   val_number: number | null

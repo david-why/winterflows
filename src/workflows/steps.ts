@@ -1,13 +1,13 @@
-import slack from '../clients/slack'
 import { createTimeTrigger } from '../triggers/create'
 import { registerTriggerFunction } from '../triggers/functions'
 import type { ExecutionContext } from './context'
 import { advanceWorkflow } from './execute'
+import messagesSteps from './specs/messages'
 
 export const PENDING = Symbol.for('Winterflows.PENDING')
 export type PENDING = typeof PENDING
 
-export type DataType = 'user' | 'channel' | 'text' | 'rich_text'
+export type DataType = 'user' | 'channel' | 'text' | 'rich_text' | 'message'
 
 export type StepFunction<
   Inputs extends Record<string, string> = Record<string, string>,
@@ -44,7 +44,7 @@ export type WorkflowStepSpec<
   func: StepFunction<Inputs, Outputs>
 } & StepSpec<Inputs, Outputs>
 
-function defineStep<
+export function defineStep<
   Inputs extends Record<string, string> = Record<string, string>,
   Outputs extends Record<string, string> = Record<string, string>
 >(
@@ -56,26 +56,13 @@ function defineStep<
 
 // steps
 
-async function sendMessageToUser(
-  ctx: ExecutionContext,
-  { user_id, message }: { user_id: string; message: string }
-) {
-  const msg = await slack.chat.postMessage({
-    token: ctx.token,
-    channel: user_id,
-    blocks: [JSON.parse(message)],
-  })
-  return {
-    ts: msg.ts!,
-  }
-}
-
 async function delayWorkflow(ctx: ExecutionContext, { ms }: { ms: string }) {
   const time = parseFloat(ms)
   if (isNaN(time)) {
     throw new Error(`Failed to parse sleep duration \`${ms}\``)
   }
   await createTimeTrigger(Date.now() + time, {
+    workflow_id: null,
     execution_id: ctx.execution.id,
     func: 'steps.delay.restart',
     details: ctx.step_id,
@@ -86,27 +73,13 @@ async function delayWorkflow(ctx: ExecutionContext, { ms }: { ms: string }) {
 
 registerTriggerFunction('steps.delay.restart', async (trigger) => {
   const stepId = trigger.details!
-  await advanceWorkflow(trigger.execution_id, stepId, {})
+  await advanceWorkflow(trigger.execution_id!, stepId, {})
 })
 
 // end steps
 
 const steps: Record<string, WorkflowStepSpec<any, any>> = {
-  'test-dm-user': defineStep(sendMessageToUser, {
-    name: 'Send a message to a person',
-    category: 'Messages',
-    inputs: {
-      user_id: { name: 'User', required: true, type: 'user' },
-      message: { name: 'Message', required: true, type: 'rich_text' },
-    },
-    outputs: {
-      ts: {
-        name: 'Timestamp of message',
-        required: true,
-        type: 'text',
-      },
-    },
-  }),
+  ...messagesSteps,
   delay: defineStep(delayWorkflow, {
     name: 'Delay execution',
     category: 'Utilities',

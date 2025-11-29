@@ -408,6 +408,21 @@ function getStepInputAccessory(
       option_groups: groups,
       initial_option: initial || groups[0]!.options[0],
     }
+  } else if (input.type === 'message') {
+    const { groups, initial } = getTokenOptionGroups(
+      workflowSteps.slice(0, index),
+      [input.type],
+      step.inputs[inputKey]
+    )
+
+    if (groups.length) {
+      return {
+        type: 'static_select',
+        action_id: `update_category:${workflow.id}:${step.id}:${inputKey}`,
+        option_groups: groups,
+        initial_option: initial || groups[0]!.options[0],
+      }
+    }
   }
 }
 

@@ -39,15 +39,18 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS triggers (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-    execution_id INTEGER NOT NULL,
+    execution_id INTEGER,
+    workflow_id INTEGER,
     type TEXT NOT NULL,
     val_string TEXT,
     val_number BIGINT,
     func TEXT NOT NULL,  -- the function to call (not with eval lol)
     details TEXT,  -- optional data passed to func
-    FOREIGN KEY (execution_id) REFERENCES workflow_executions (id) ON DELETE CASCADE
+    FOREIGN KEY (execution_id) REFERENCES workflow_executions (id) ON DELETE CASCADE,
+    FOREIGN KEY (workflow_id) REFERENCES workflows (id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_triggers_execution_id ON triggers (execution_id);
+CREATE INDEX IF NOT EXISTS idx_triggers_workflow_id ON triggers (workflow_id);
 CREATE INDEX IF NOT EXISTS idx_triggers_type ON triggers (type);
 CREATE INDEX IF NOT EXISTS idx_triggers_type_val_string ON triggers (type, val_string);
 CREATE INDEX IF NOT EXISTS idx_triggers_type_val_number ON triggers (type, val_number);
