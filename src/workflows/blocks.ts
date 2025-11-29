@@ -304,10 +304,31 @@ function generateStepInputBlocks(
     })
   }
   if (input.type === 'rich_text' || input.type === 'text') {
+    const prependGroups: {
+      label: PlainTextElement
+      options: PlainTextOption[]
+    }[] = [
+      {
+        label: { type: 'plain_text', text: 'Workflow info' },
+        options: [
+          {
+            text: { type: 'plain_text', text: '@user who used this workflow' },
+            value: JSON.stringify({
+              type: 'text',
+              text: '$!{ctx.trigger_user_ping}',
+            }),
+          },
+        ],
+      },
+    ]
+
     const { groups, initial } = getTokenOptionGroups(
       workflowSteps.slice(0, index),
-      input.type === 'rich_text' ? ['text', 'rich_text'] : ['text']
+      input.type === 'rich_text' ? ['text', 'rich_text'] : ['text'],
+      undefined,
+      prependGroups
     )
+
     if (groups.length) {
       blocks.push({
         type: 'actions',
