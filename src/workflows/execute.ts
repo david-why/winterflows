@@ -25,9 +25,14 @@ export interface WorkflowStep<Type extends keyof WorkflowStepMap> {
 
 export interface ExecutionState {
   outputs: Record<string, string>
+  additionalCtx: Record<string, string>
 }
 
-export async function startWorkflow(workflow: Workflow, user: string) {
+export async function startWorkflow(
+  workflow: Workflow,
+  user: string,
+  additionalCtx: Record<string, string> = {}
+) {
   if (!workflow.access_token) return
 
   console.log(`Workflow ${workflow.id} started by ${user}`)
@@ -36,7 +41,10 @@ export async function startWorkflow(workflow: Workflow, user: string) {
     workflow_id: workflow.id,
     trigger_user_id: user,
     steps: workflow.steps,
-    state: JSON.stringify({ outputs: {} } satisfies ExecutionState),
+    state: JSON.stringify({
+      outputs: {},
+      additionalCtx,
+    } satisfies ExecutionState),
   })
 
   await proceedWorkflow(execution)
@@ -70,6 +78,9 @@ export async function proceedWorkflow(execution: WorkflowExecution) {
     }
     for (const [key, value] of Object.entries(state.outputs)) {
       replacements[`$!{outputs.${key}}`] = value
+    }
+    for (const [key, value] of Object.entries(state.additionalCtx)) {
+      replacements[`$!{${key}}`] = value
     }
 
     const inputs: Record<string, string> = {}

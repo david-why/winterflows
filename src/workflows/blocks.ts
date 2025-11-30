@@ -68,6 +68,21 @@ export async function generateWorkflowEditView(
           text: { type: 'plain_text', text: 'View all your workflows' },
           url: `slack://app?id=${SLACK_APP_ID}`,
         },
+        {
+          type: 'static_select',
+          placeholder: { type: 'plain_text', text: 'Edit trigger' },
+          action_id: 'edit_workflow_trigger',
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Link (none)' },
+              value: 'none',
+            },
+            {
+              text: { type: 'plain_text', text: 'Message' },
+              value: 'message',
+            },
+          ],
+        },
       ],
     },
     { type: 'divider' },

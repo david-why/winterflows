@@ -11,3 +11,15 @@ export async function createTimeTrigger(
     val_number: time,
   })
 }
+
+export async function createMessageTrigger(
+  channel: string,
+  trigger: Omit<Trigger, 'id' | 'type' | 'val_string' | 'val_number'>
+) {
+  await addTrigger({
+    ...trigger,
+    type: 'message',
+    val_string: channel,
+    val_number: null,
+  })
+}

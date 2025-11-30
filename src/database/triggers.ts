@@ -40,3 +40,7 @@ export async function addTrigger(obj: Omit<Trigger, 'id'>) {
 export async function deleteTriggerById(id: number) {
   await sql`DELETE FROM triggers WHERE id = ${id}`
 }
+
+export async function deleteTriggersByWorkflowId(workflowId: number) {
+  await sql`DELETE FROM triggers WHERE workflow_id = ${workflowId}`
+}

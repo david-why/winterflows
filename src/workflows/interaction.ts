@@ -4,7 +4,7 @@ import type {
   SlackViewAction,
   ViewStateValue,
 } from '@slack/bolt'
-import type { RichTextBlock } from '@slack/types'
+import type { RichTextBlock, SlackEvent } from '@slack/types'
 import slack from '../clients/slack'
 import {
   getWorkflowById,
@@ -12,11 +12,23 @@ import {
   type Workflow,
 } from '../database/workflows'
 import { generateRandomId } from '../utils/formatting'
-import { addTextToRichTextBlock, respond } from '../utils/slack'
+import {
+  addTextToRichTextBlock,
+  generateManifest,
+  getActiveConfigToken,
+  respond,
+  type ManifestEvent,
+} from '../utils/slack'
 import { getWorkflowSteps } from '../utils/workflows'
 import { generateStepEditView, updateHomeTab } from './blocks'
 import { startWorkflow, type WorkflowStep } from './execute'
 import stepSpecs, { type WorkflowStepMap } from './steps'
+import {
+  deleteTriggerById,
+  deleteTriggersByWorkflowId,
+} from '../database/triggers'
+import { createMessageTrigger } from '../triggers/create'
+import { registerTriggerFunction } from '../triggers/functions'
 
 export async function handleInteraction(
   interaction: SlackAction | SlackViewAction
@@ -192,6 +204,45 @@ export async function handleInteraction(
         view_id: interaction.view!.id,
         view: await generateStepEditView(workflow, stepId!, currentState),
       })
+    } else if (action.action_id === 'edit_workflow_trigger') {
+      // when the "Edit trigger" button is clicked in workflow app home
+
+      if (action.type !== 'static_select') return
+
+      const trigger_type = action.selected_option.value as 'none' | 'message'
+
+      const { id } = JSON.parse(interaction.view!.private_metadata) as {
+        id: number
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow || !workflow.access_token) return
+
+      await deleteTriggersByWorkflowId(id)
+
+      const extraEvents: ManifestEvent[] = []
+      if (trigger_type === 'message')
+        extraEvents.push(
+          'message.im',
+          'message.channels',
+          'message.groups',
+          'message.mpim'
+        )
+      const manifest = generateManifest(workflow.name, extraEvents)
+      await slack.apps.manifest.update({
+        token: await getActiveConfigToken(),
+        app_id: workflow.app_id,
+        manifest,
+      })
+
+      if (trigger_type === 'message') {
+        // FIXME: don't hardcode the channel please
+        await createMessageTrigger('C0A158LFGSU', {
+          workflow_id: id,
+          execution_id: null,
+          func: 'workflow.execute.message',
+          details: JSON.stringify({}),
+        })
+      }
     }
   } else if (interaction.type === 'view_submission') {
     if (interaction.view.callback_id === 'step_edit') {
@@ -218,6 +269,20 @@ export async function handleInteraction(
     }
   }
 }
+
+registerTriggerFunction(
+  'workflow.execute.message',
+  async (trigger, message: SlackEvent & { type: 'message' }) => {
+    const workflow = await getWorkflowById(trigger.workflow_id!)
+    if (!workflow) return deleteTriggerById(trigger.id)
+    await startWorkflow(workflow, workflow.creator_user_id, {
+      'trigger.message': JSON.stringify({
+        channel: message.channel,
+        ts: message.ts,
+      }),
+    })
+  }
+)
 
 async function updateWorkflowStepInput(
   workflow: Workflow,

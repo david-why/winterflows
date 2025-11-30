@@ -1,14 +1,10 @@
 import type { SlashCommand } from '@slack/bolt'
-import type {
-  AppsManifestCreateArguments,
-  AppsManifestCreateResponse,
-} from '@slack/web-api'
+import type { AppsManifestCreateResponse } from '@slack/web-api'
 import slack from '../clients/slack'
 import { addWorkflow } from '../database/workflows'
-import { getActiveConfigToken, respond } from '../utils/slack'
-import { WORKFLOW_APP_SCOPES } from '../consts'
+import { generateManifest, getActiveConfigToken, respond } from '../utils/slack'
 
-const { EXTERNAL_URL, SLACK_APP_ID } = process.env
+const { SLACK_APP_ID } = process.env
 
 export async function handleCommand(payload: SlashCommand) {
   if (payload.command.endsWith('winterflows-create')) {
@@ -60,47 +56,6 @@ async function handleCreateCommand(payload: SlashCommand) {
       text: `Please visit <${url.toString()}|this link> and install the app to finish the workflow setup.`,
     })
   })()
-}
-
-function generateManifest(
-  name: string
-): AppsManifestCreateArguments['manifest'] {
-  return {
-    display_information: {
-      name: name,
-      description: 'Workflow created by Winterflows',
-    },
-    features: {
-      app_home: {
-        home_tab_enabled: true,
-        messages_tab_enabled: true,
-        messages_tab_read_only_enabled: true,
-      },
-      bot_user: {
-        display_name: name,
-        always_online: false,
-      },
-    },
-    oauth_config: {
-      redirect_urls: [`${EXTERNAL_URL}/oauth/callback`],
-      scopes: {
-        bot: WORKFLOW_APP_SCOPES,
-      },
-    },
-    settings: {
-      event_subscriptions: {
-        request_url: `${EXTERNAL_URL}/slack/events`,
-        bot_events: ['app_home_opened'],
-      },
-      interactivity: {
-        is_enabled: true,
-        request_url: `${EXTERNAL_URL}/slack/interaction`,
-      },
-      org_deploy_enabled: false,
-      socket_mode_enabled: false,
-      token_rotation_enabled: false,
-    },
-  }
 }
 
 async function handleRootCommand() {

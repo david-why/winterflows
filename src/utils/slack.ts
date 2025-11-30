@@ -5,8 +5,57 @@ import type {
   RichTextElement,
   RichTextStyleable,
 } from '@slack/types'
+import type { AppsManifestCreateArguments } from '@slack/web-api'
 import slack from '../clients/slack'
 import { getConfigToken, updateConfigToken } from '../database/config_tokens'
+import { WORKFLOW_APP_SCOPES } from '../consts'
+
+const { EXTERNAL_URL } = process.env
+
+export type ManifestEvent =
+  (((AppsManifestCreateArguments['manifest']['settings'] & {})['event_subscriptions'] & {})['bot_events'] & {})[number]
+
+export function generateManifest(
+  name: string,
+  additionalEvents: ManifestEvent[] = []
+): AppsManifestCreateArguments['manifest'] {
+  return {
+    display_information: {
+      name: name,
+      description: 'Workflow created by Winterflows',
+    },
+    features: {
+      app_home: {
+        home_tab_enabled: true,
+        messages_tab_enabled: true,
+        messages_tab_read_only_enabled: true,
+      },
+      bot_user: {
+        display_name: name,
+        always_online: false,
+      },
+    },
+    oauth_config: {
+      redirect_urls: [`${EXTERNAL_URL}/oauth/callback`],
+      scopes: {
+        bot: WORKFLOW_APP_SCOPES,
+      },
+    },
+    settings: {
+      event_subscriptions: {
+        request_url: `${EXTERNAL_URL}/slack/events`,
+        bot_events: ['app_home_opened', ...additionalEvents],
+      },
+      interactivity: {
+        is_enabled: true,
+        request_url: `${EXTERNAL_URL}/slack/interaction`,
+      },
+      org_deploy_enabled: false,
+      socket_mode_enabled: false,
+      token_rotation_enabled: false,
+    },
+  }
+}
 
 export async function respond(
   event: { response_url: string },

@@ -2,6 +2,8 @@ import type { EnvelopedEvent } from '@slack/bolt'
 import type { SlackEvent } from '@slack/types'
 import type { Workflow } from '../database/workflows'
 import { updateHomeTab } from './blocks'
+import { getTriggersByTypeAndString } from '../database/triggers'
+import { executeTriggerFunction } from '../triggers/functions'
 
 export async function handleWorkflowEvent({
   event,
@@ -17,5 +19,11 @@ export async function handleWorkflowEvent({
     if (event.tab !== 'home') return
 
     await updateHomeTab(workflow, event.user)
+  } else if (event.type === 'message') {
+    const triggers = await getTriggersByTypeAndString('message', event.channel)
+
+    await Promise.allSettled(
+      triggers.map((t) => executeTriggerFunction(t, event))
+    )
   }
 }
