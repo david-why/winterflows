@@ -25,5 +25,14 @@ export async function handleWorkflowEvent({
     await Promise.allSettled(
       triggers.map((t) => executeTriggerFunction(t, event))
     )
+  } else if (event.type === 'reaction_added') {
+    const triggers = await getTriggersByTypeAndString(
+      'reaction',
+      `${event.item.channel}|${event.reaction}`
+    )
+
+    await Promise.allSettled(
+      triggers.map((t) => executeTriggerFunction(t, event))
+    )
   }
 }

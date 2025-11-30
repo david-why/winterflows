@@ -29,7 +29,7 @@ import {
   getTriggersWhere,
   updateTrigger,
 } from '../database/triggers'
-import { createMessageTrigger } from '../triggers/create'
+import { createMessageTrigger, createReactionTrigger } from '../triggers/create'
 import { registerTriggerFunction } from '../triggers/functions'
 import { sql } from 'bun'
 
@@ -212,7 +212,10 @@ export async function handleInteraction(
 
       if (action.type !== 'static_select') return
 
-      const trigger_type = action.selected_option.value as 'none' | 'message'
+      const triggerType = action.selected_option.value as
+        | 'none'
+        | 'message'
+        | 'reaction'
 
       const { id } = JSON.parse(interaction.view!.private_metadata) as {
         id: number
@@ -223,13 +226,16 @@ export async function handleInteraction(
       await deleteTriggersByWorkflowId(id)
 
       const extraEvents: ManifestEvent[] = []
-      if (trigger_type === 'message')
+      if (triggerType === 'message') {
         extraEvents.push(
           'message.im',
           'message.channels',
           'message.groups',
           'message.mpim'
         )
+      } else if (triggerType === 'reaction') {
+        extraEvents.push('reaction_added')
+      }
       const manifest = generateManifest(workflow.name, extraEvents)
       await slack.apps.manifest.update({
         token: await getActiveConfigToken(),
@@ -237,11 +243,18 @@ export async function handleInteraction(
         manifest,
       })
 
-      if (trigger_type === 'message') {
+      if (triggerType === 'message') {
         await createMessageTrigger('', {
           workflow_id: id,
           execution_id: null,
           func: 'workflow.execute.message',
+          details: JSON.stringify({}),
+        })
+      } else if (triggerType === 'reaction') {
+        await createReactionTrigger('', '', {
+          workflow_id: id,
+          execution_id: null,
+          func: 'workflow.execute.reaction',
           details: JSON.stringify({}),
         })
       }
@@ -289,6 +302,73 @@ export async function handleInteraction(
               },
             ],
       })
+    } else if (
+      action.action_id === 'workflow_trigger_reaction_update_channel'
+    ) {
+      // the channel dropdown is edited when trigger == "Reaction" on app home
+      // TODO: merge this with the above code
+
+      if (action.type !== 'conversations_select') return
+
+      const { id } = JSON.parse(interaction.view!.private_metadata) as {
+        id: number
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow || !workflow.access_token) return
+
+      const trigger = (await getTriggersWhere(sql`workflow_id = ${id}`))[0]
+      if (trigger?.type !== 'reaction') return
+
+      trigger.val_string = `${action.selected_conversation}|${
+        trigger.val_string?.split('|')[1]
+      }`
+      await updateTrigger(trigger)
+
+      // maybe join the convo
+      let joinSuccess = false
+      try {
+        await slack.conversations.join({
+          token: workflow.access_token,
+          channel: action.selected_conversation,
+        })
+        joinSuccess = true
+      } catch (e) {
+        console.warn('Failed to join trigger conversation:', e)
+      }
+
+      await updateHomeTab(workflow, interaction.user.id, {
+        triggerBlocks: joinSuccess
+          ? []
+          : [
+              {
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: "Failed to join the selected channel. Maybe it's private? Please invite me to the channel manually for me to work!\n_Note: DMs aren't supported because you can't add a bot to a DM :(_",
+                },
+              },
+            ],
+      })
+    } else if (action.action_id === 'workflow_trigger_reaction_update_emoji') {
+      // the emoji field is edited when trigger == "Reaction" on app home
+
+      if (action.type !== 'plain_text_input') return
+
+      const { id } = JSON.parse(interaction.view!.private_metadata) as {
+        id: number
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow || !workflow.access_token) return
+
+      const trigger = (await getTriggersWhere(sql`workflow_id = ${id}`))[0]
+      if (trigger?.type !== 'reaction') return
+
+      trigger.val_string = `${trigger.val_string?.split('|')[0]}|${
+        action.value
+      }`
+      await updateTrigger(trigger)
+
+      await updateHomeTab(workflow, interaction.user.id)
     }
   } else if (interaction.type === 'view_submission') {
     if (interaction.view.callback_id === 'step_edit') {
@@ -335,6 +415,22 @@ registerTriggerFunction(
       }),
       'trigger.message.user': message.user,
       'trigger.message.user_ping': `<@${message.user}>`,
+    })
+  }
+)
+
+registerTriggerFunction(
+  'workflow.execute.reaction',
+  async (trigger, event: SlackEvent & { type: 'reaction_added' }) => {
+    const workflow = await getWorkflowById(trigger.workflow_id!)
+    if (!workflow) return deleteTriggerById(trigger.id)
+    await startWorkflow(workflow, workflow.creator_user_id, {
+      'trigger.message': JSON.stringify({
+        channel: event.item.channel,
+        ts: event.item.ts,
+      }),
+      'trigger.user': event.user,
+      'trigger.user_ping': `<@${event.user}>`,
     })
   }
 )

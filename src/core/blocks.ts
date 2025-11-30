@@ -1,8 +1,10 @@
-import type { HomeView, KnownBlock } from '@slack/types'
+import type { ActionsBlockElement, HomeView, KnownBlock } from '@slack/types'
 import { getWorkflowsByCreator, type Workflow } from '../database/workflows'
 import slack from '../clients/slack'
 import { truncateText } from '../utils/formatting'
 import { WORKFLOW_APP_SCOPES } from '../consts'
+import { getTriggersWhere } from '../database/triggers'
+import { sql } from 'bun'
 
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!
 
@@ -122,6 +124,18 @@ async function generateCoreHomeView(
       })
     }
     for (const workflow of filteredWorkflows.slice(0, MAX_WORKFLOWS_PER_PAGE)) {
+      const trigger = await getTriggersWhere(sql`workflow_id = ${workflow.id}`)
+      const runButtons: ActionsBlockElement[] = trigger
+        ? []
+        : [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Run workflow' },
+              action_id: 'run_workflow_home',
+              value: JSON.stringify({ id: workflow.id }),
+              style: 'primary',
+            },
+          ]
       blocks.push(
         { type: 'header', text: { type: 'plain_text', text: workflow.name } },
         {
@@ -136,13 +150,7 @@ async function generateCoreHomeView(
               text: { type: 'plain_text', text: 'Edit' },
               url: `slack://app?id=${workflow.app_id}`,
             },
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'Run workflow' },
-              action_id: 'run_workflow_home',
-              value: JSON.stringify({ id: workflow.id }),
-              style: 'primary',
-            },
+            ...runButtons,
             {
               type: 'button',
               text: { type: 'plain_text', text: 'Delete' },

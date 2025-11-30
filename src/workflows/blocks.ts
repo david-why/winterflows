@@ -62,8 +62,12 @@ export async function generateWorkflowEditView(
       value: 'none',
     },
     {
-      text: { type: 'plain_text', text: 'Message' },
+      text: { type: 'plain_text', text: 'Message sent' },
       value: 'message',
+    },
+    {
+      text: { type: 'plain_text', text: 'Reaction added' },
+      value: 'reaction',
     },
   ]
   const triggerInitialOption = triggerOptions.find(
@@ -89,6 +93,13 @@ export async function generateWorkflowEditView(
       action_id: 'workflow_trigger_message_update',
       initial_conversation: trigger!.val_string || undefined,
     })
+  } else if (triggerType === 'reaction') {
+    triggerActions.push({
+      type: 'conversations_select',
+      placeholder: { type: 'plain_text', text: 'Channel to listen in' },
+      action_id: 'workflow_trigger_reaction_update_channel',
+      initial_conversation: trigger!.val_string?.split('|')[0] || undefined,
+    })
   }
 
   const triggerBlocks: KnownBlock[] = []
@@ -98,6 +109,21 @@ export async function generateWorkflowEditView(
       text: {
         type: 'mrkdwn',
         text: `Workflow link: <${EXTERNAL_URL}/workflow/${workflow.id}>`,
+      },
+    })
+  }
+  if (triggerType === 'reaction') {
+    triggerBlocks.push({
+      type: 'input',
+      label: {
+        type: 'plain_text',
+        text: 'Emoji that triggers the workflow (without colons)',
+      },
+      dispatch_action: true,
+      element: {
+        type: 'plain_text_input',
+        action_id: 'workflow_trigger_reaction_update_emoji',
+        initial_value: trigger!.val_string?.split('|')[1] || undefined,
       },
     })
   }
@@ -239,6 +265,8 @@ function generateWorkflowStepBlocks<T extends keyof WorkflowStepMap>(
 export async function generateWorkflowView(
   workflow: Workflow
 ): Promise<KnownBlock[]> {
+  const trigger = (await getTriggersWhere(sql`workflow_id = ${workflow.id}`))[0]
+
   return [
     {
       type: 'header',
@@ -248,18 +276,28 @@ export async function generateWorkflowView(
       type: 'section',
       text: { type: 'mrkdwn', text: workflow.description },
     },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: 'Run workflow' },
-          action_id: 'run_workflow_home',
-          value: JSON.stringify({ id: workflow.id }),
-          style: 'primary',
+    trigger
+      ? {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `This workflow starts on a ${trigger.type} trigger.`,
+            },
+          ],
+        }
+      : {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Run workflow' },
+              action_id: 'run_workflow_home',
+              value: JSON.stringify({ id: workflow.id }),
+              style: 'primary',
+            },
+          ],
         },
-      ],
-    },
   ]
 }
 
@@ -523,23 +561,36 @@ function getTokenOptionGroups(
   }
   if (triggerType === 'message' && types.includes('user')) {
     triggerOptions.push({
-      text: {
-        type: 'plain_text',
-        text: 'Sender of trigger message',
-      },
+      text: { type: 'plain_text', text: 'Sender of trigger message' },
       value: JSON.stringify({ type: 'text', text: '$!{trigger.message.user}' }),
     })
   }
   if (triggerType === 'message' && types.includes('rich_text')) {
     triggerOptions.push({
-      text: {
-        type: 'plain_text',
-        text: '@user who sent the trigger message',
-      },
+      text: { type: 'plain_text', text: '@user who sent the trigger message' },
       value: JSON.stringify({
         type: 'text',
         text: '$!{trigger.message.user_ping}',
       }),
+    })
+  }
+  // reaction triggers
+  if (triggerType === 'reaction' && types.includes('message')) {
+    triggerOptions.push({
+      text: { type: 'plain_text', text: 'Message where reaction was used' },
+      value: JSON.stringify({ type: 'text', text: '$!{trigger.message}' }),
+    })
+  }
+  if (triggerType === 'reaction' && types.includes('user')) {
+    triggerOptions.push({
+      text: { type: 'plain_text', text: 'Person who added the reaction' },
+      value: JSON.stringify({ type: 'text', text: '$!{trigger.user}' }),
+    })
+  }
+  if (triggerType === 'reaction' && types.includes('rich_text')) {
+    triggerOptions.push({
+      text: { type: 'plain_text', text: '@user who added the reaction' },
+      value: JSON.stringify({ type: 'text', text: '$!{trigger.user_ping}' }),
     })
   }
   if (triggerOptions.length) {
