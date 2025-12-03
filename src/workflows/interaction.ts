@@ -248,18 +248,7 @@ async function handleInteractionInner(
 
       await deleteTriggersByWorkflowId(id)
 
-      const extraEvents: ManifestEvent[] = []
-      if (triggerType === 'message') {
-        extraEvents.push(
-          'message.im',
-          'message.channels',
-          'message.groups',
-          'message.mpim'
-        )
-      } else if (triggerType === 'reaction') {
-        extraEvents.push('reaction_added')
-      }
-      const manifest = generateManifest(workflow.name, extraEvents)
+      const manifest = generateManifest(workflow.name, triggerType)
       await slack.apps.manifest.update({
         token: await getActiveConfigToken(),
         app_id: workflow.app_id,

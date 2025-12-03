@@ -17,8 +17,19 @@ export type ManifestEvent =
 
 export function generateManifest(
   name: string,
-  additionalEvents: ManifestEvent[] = []
+  trigger?: string
 ): AppsManifestCreateArguments['manifest'] {
+  const extraEvents: ManifestEvent[] = []
+  if (trigger === 'message') {
+    extraEvents.push(
+      'message.im',
+      'message.channels',
+      'message.groups',
+      'message.mpim'
+    )
+  } else if (trigger === 'reaction') {
+    extraEvents.push('reaction_added')
+  }
   return {
     display_information: {
       name: name,
@@ -44,7 +55,7 @@ export function generateManifest(
     settings: {
       event_subscriptions: {
         request_url: `${EXTERNAL_URL}/slack/events`,
-        bot_events: ['app_home_opened', ...additionalEvents],
+        bot_events: ['app_home_opened', ...extraEvents],
       },
       interactivity: {
         is_enabled: true,
