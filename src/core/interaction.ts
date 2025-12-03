@@ -20,7 +20,12 @@ export async function handleCoreInteraction(interaction: SlackAction) {
       const workflow = await getWorkflowById(id)
       if (!workflow) return respond(interaction, 'The workflow is not found!')
 
-      await startWorkflow(workflow, interaction.user.id)
+      await startWorkflow(
+        workflow,
+        interaction.user.id,
+        undefined,
+        interaction.trigger_id
+      )
     } else if (actionId === 'search_workflows') {
       // the search workflow input on App Home was submitted
 
