@@ -6,7 +6,13 @@ import { advanceWorkflow } from '../execute'
 export const PENDING = Symbol.for('Winterflows.PENDING')
 export type PENDING = typeof PENDING
 
-export type DataType = 'user' | 'channel' | 'text' | 'rich_text' | 'message'
+export type DataType =
+  | 'user'
+  | 'channel'
+  | 'text'
+  | 'rich_text'
+  | 'message'
+  | 'usergroup'
 
 export type StepFunction<
   Inputs extends Record<string, string> = Record<string, string>,
@@ -59,6 +65,7 @@ export function defineStep<
 import channelSteps from './channels'
 import formsSteps from './forms'
 import messagesSteps from './messages'
+import usersSteps from './users'
 
 async function delayWorkflow(ctx: ExecutionContext, { ms }: { ms: string }) {
   const time = parseFloat(ms)
@@ -86,6 +93,7 @@ const steps: Record<string, WorkflowStepSpec<any, any>> = {
   ...messagesSteps,
   ...formsSteps,
   ...channelSteps,
+  ...usersSteps,
   delay: defineStep(delayWorkflow, {
     name: 'Delay execution',
     category: 'Utilities',

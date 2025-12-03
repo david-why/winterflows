@@ -150,7 +150,7 @@ Bun.serve({
 
           const interaction = unsafePayload as SlackAction
 
-          handleInteraction(interaction)
+          return handleInteraction(interaction)
         }
 
         return new Response()

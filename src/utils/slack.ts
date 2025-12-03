@@ -49,6 +49,7 @@ export function generateManifest(
       interactivity: {
         is_enabled: true,
         request_url: `${EXTERNAL_URL}/slack/interaction`,
+        message_menu_options_url: `${EXTERNAL_URL}/slack/options`,
       },
       org_deploy_enabled: false,
       socket_mode_enabled: false,

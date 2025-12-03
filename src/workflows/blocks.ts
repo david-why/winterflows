@@ -403,6 +403,26 @@ function generateStepInputBlocks(
       optional: !input.required,
     })
   }
+  if (input.type === 'usergroup' && !currentValue.startsWith('$')) {
+    blocks.push({
+      type: 'input',
+      block_id: generateRandomId(),
+      label: { type: 'plain_text', text: ' ' },
+      element: {
+        type: 'external_select',
+        min_query_length: 1,
+        action_id: actionId,
+        initial_option:
+          overrideValues[actionId] ||
+          (currentValue && {
+            text: { type: 'plain_text', text: currentValue },
+            value: currentValue,
+          }) ||
+          undefined,
+      },
+      optional: !input.required,
+    })
+  }
   if (input.type === 'rich_text') {
     blocks.push({
       type: 'input',

@@ -1,5 +1,6 @@
 import type {
   BlockElementAction,
+  BlockSuggestion,
   SlackAction,
   SlackViewAction,
   ViewStateValue,
@@ -11,7 +12,7 @@ import {
   updateWorkflow,
   type Workflow,
 } from '../database/workflows'
-import { generateRandomId } from '../utils/formatting'
+import { generateRandomId, truncateText } from '../utils/formatting'
 import {
   addTextToRichTextBlock,
   generateManifest,
@@ -37,7 +38,20 @@ import {
 } from '../triggers/functions'
 import { sql } from 'bun'
 
+const { SLACK_BOT_TOKEN } = process.env
+
 export async function handleInteraction(
+  interaction: SlackAction | SlackViewAction | BlockSuggestion
+) {
+  if (interaction.type === 'block_suggestion') {
+    return handleDynamicInputs(interaction)
+  } else {
+    handleInteractionInner(interaction)
+    return new Response()
+  }
+}
+
+async function handleInteractionInner(
   interaction: SlackAction | SlackViewAction
 ) {
   if (interaction.type === 'block_actions') {
@@ -456,6 +470,97 @@ registerTriggerFunction(
   }
 )
 
+async function handleDynamicInputs(interaction: BlockSuggestion) {
+  const value = interaction.value
+  if (interaction.view?.callback_id === 'step_edit') {
+    if (interaction.action_id.startsWith('update_input:')) {
+      // some step input is being selected
+      const [, , , inputKey] = interaction.action_id.split(':')
+
+      const { id, stepId } = JSON.parse(interaction.view.private_metadata) as {
+        id: number
+        stepId: string
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow) {
+        return Response.json({
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Workflow not found' },
+              value: '',
+            },
+          ],
+        })
+      }
+      const steps = getWorkflowSteps(workflow)
+      const step = steps.find((s) => s.id === stepId)
+      if (!step) {
+        return Response.json({
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Step not found' },
+              value: '',
+            },
+          ],
+        })
+      }
+      const spec = stepSpecs[step.type_id]!
+      const input = spec.inputs[inputKey!]!
+
+      if (input.type === 'usergroup') {
+        // a usergroup input is being selected
+
+        const res = await slack.usergroups.list({
+          token: workflow.access_token!,
+        })
+        const groups = res
+          .usergroups!.filter(
+            (g) =>
+              g.name?.toLowerCase().includes(value.toLowerCase()) ||
+              g.handle?.toLowerCase().includes(value.toLowerCase())
+          )
+          .slice(0, 100)
+        return Response.json({
+          options: groups.map((g) => ({
+            text: {
+              type: 'plain_text',
+              text: truncateText(`${g.name} (@${g.handle})`, 75),
+            },
+            value: g.id!,
+          })),
+        })
+      } else {
+        return Response.json({
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Unknown input type' },
+              value: '',
+            },
+          ],
+        })
+      }
+    } else {
+      return Response.json({
+        options: [
+          {
+            text: { type: 'plain_text', text: 'Unknown select field' },
+            value: '',
+          },
+        ],
+      })
+    }
+  } else {
+    return Response.json({
+      options: [
+        {
+          text: { type: 'plain_text', text: 'Unknown modal' },
+          value: '',
+        },
+      ],
+    })
+  }
+}
+
 async function updateWorkflowStepInput(
   workflow: Workflow,
   stepId: string,
@@ -488,6 +593,9 @@ function getValueFromState(action: ViewStateValue) {
         type: 'text',
         text: action.selected_conversation,
       }
+    case 'external_select':
+      if (!action.selected_option) return
+      return { type: 'text', text: action.selected_option.value }
     case 'rich_text_input':
       if (!action.rich_text_value) return
       return {
@@ -511,6 +619,11 @@ function getValue(action: BlockElementAction) {
         type: 'text',
         text: action.selected_conversation,
       })
+    case 'external_select':
+      return JSON.stringify({
+        type: 'text',
+        text: action.selected_option!.value,
+      })
     case 'rich_text_input':
       return JSON.stringify({
         type: 'text',
@@ -532,6 +645,8 @@ function getInitialValueFromState(action: ViewStateValue): any {
       return action.selected_user
     case 'conversations_select':
       return action.selected_conversation
+    case 'external_select':
+      return action.selected_option
     case 'rich_text_input':
       return action.rich_text_value
     case 'plain_text_input':
