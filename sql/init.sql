@@ -34,9 +34,9 @@ CREATE TABLE IF NOT EXISTS config_tokens (
 
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY NOT NULL,
-    access_token TEXT,
-    scopes TEXT  -- space separated
+    api_key TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_users_api_key ON users (api_key);
 
 CREATE TABLE IF NOT EXISTS triggers (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
