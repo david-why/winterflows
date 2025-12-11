@@ -67,6 +67,7 @@ import formsSteps from './forms'
 import messagesSteps from './messages'
 import usersSteps from './users'
 import utilitiesSteps from './utilities'
+import convertSteps from './convert'
 
 // end steps
 
@@ -76,6 +77,7 @@ const steps: Record<string, WorkflowStepSpec<any, any>> = {
   ...channelSteps,
   ...usersSteps,
   ...utilitiesSteps,
+  ...convertSteps,
 }
 
 export default steps

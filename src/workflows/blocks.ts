@@ -266,7 +266,25 @@ function generateWorkflowStepBlocks<T extends keyof WorkflowStepMap>(
     }
 
     for (const [key, arg] of Object.entries(spec.inputs)) {
-      const value = step.inputs[key] ? `\`${step.inputs[key]}\`` : '<no value>'
+      const input = step.inputs[key]
+      let value: string = `\`${input}\``
+      if (!input) {
+        value = '`<no value>`'
+      } else if (!input.startsWith('$!{')) {
+        switch (arg.type) {
+          case 'channel':
+            value = `<#${input}>`
+            break
+          case 'user':
+            value = `<@${input}>`
+            break
+          case 'usergroup':
+            value = `<!subteam^${input}>`
+            break
+          case 'rich_text':
+            value = '`<rich text content>`'
+        }
+      }
       text += `\n${arg.name}: ${value}`
     }
   } else {
