@@ -414,8 +414,6 @@ All errors follow this format:
 
 ## Examples
 
-j
-
 ### cURL
 
 List workflows:
