@@ -14,6 +14,11 @@ import { cronTriggerTask, timeTriggerTask } from './triggers/task'
 import { getActiveConfigToken, getDMLink, getUserLink } from './utils/slack'
 import { handleWorkflowEvent } from './workflows/events'
 import { handleInteraction } from './workflows/interaction'
+import { authenticateRequest, unauthorizedResponse } from './api/auth'
+import * as workflowApi from './api/workflows'
+import * as executionApi from './api/executions'
+import * as triggerApi from './api/triggers'
+import * as metadataApi from './api/metadata'
 
 const PORT = process.env.PORT || '8000'
 const { SLACK_APP_ID } = process.env
@@ -206,6 +211,116 @@ Bun.serve({
           'This workflow is not installed yet. Please contact the creator to authenticate it.'
         )
       return Response.redirect(await getUserLink(workflow.access_token))
+    },
+
+    '/api/v1/workflows': {
+      GET: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        return workflowApi.listWorkflows(user, new URL(req.url).searchParams)
+      },
+      POST: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const body = await req.json()
+        return workflowApi.createWorkflow(user, body)
+      },
+    },
+
+    '/api/v1/workflows/:id': {
+      GET: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        return workflowApi.getWorkflow(user, id)
+      },
+      PATCH: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        const body = await req.json()
+        return workflowApi.patchWorkflow(user, id, body)
+      },
+      DELETE: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        return workflowApi.deleteWorkflow(user, id, new URL(req.url).searchParams)
+      },
+    },
+
+    '/api/v1/workflows/:id/executions': {
+      GET: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        return executionApi.listWorkflowExecutions(user, id, new URL(req.url).searchParams)
+      },
+    },
+
+    '/api/v1/executions/:execution_id': {
+      GET: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.execution_id)
+        if (isNaN(id)) return NOT_FOUND
+        return executionApi.getExecution(user, id)
+      },
+    },
+
+    '/api/v1/executions/:execution_id/cancel': {
+      POST: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.execution_id)
+        if (isNaN(id)) return NOT_FOUND
+        return executionApi.cancelExecution(user, id)
+      },
+    },
+
+    '/api/v1/workflows/:id/trigger': {
+      GET: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        return triggerApi.getWorkflowTriggerEndpoint(user, id)
+      },
+      PUT: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        const body = await req.json()
+        return triggerApi.updateWorkflowTrigger(user, id, body)
+      },
+      DELETE: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        return triggerApi.deleteWorkflowTrigger(user, id)
+      },
+    },
+
+    '/api/v1/steps/types': {
+      GET: async () => {
+        return metadataApi.listStepTypes()
+      },
+    },
+
+    '/api/v1/workflows/:id/stats': {
+      GET: async (req) => {
+        const user = await authenticateRequest(req)
+        if (!user) return unauthorizedResponse()
+        const id = parseInt(req.params.id)
+        if (isNaN(id)) return NOT_FOUND
+        return metadataApi.getWorkflowStats(user, id, new URL(req.url).searchParams)
+      },
     },
   },
   port: PORT,
