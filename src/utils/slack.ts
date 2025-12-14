@@ -6,11 +6,12 @@ import type {
   RichTextStyleable,
 } from '@slack/types'
 import type { AppsManifestCreateArguments } from '@slack/web-api'
+import { load } from 'cheerio'
 import slack from '../clients/slack'
-import { getConfigToken, updateConfigToken } from '../database/config_tokens'
 import { WORKFLOW_APP_SCOPES } from '../consts'
+import { getConfigToken, updateConfigToken } from '../database/config_tokens'
 
-const { EXTERNAL_URL } = process.env
+const { EXTERNAL_URL, SLACK_XOXD_TOKEN } = process.env
 
 export type ManifestEvent =
   (((AppsManifestCreateArguments['manifest']['settings'] & {})['event_subscriptions'] & {})['bot_events'] & {})[number]
@@ -274,4 +275,50 @@ export function addTextToRichTextBlock(block: RichTextBlock, text: string) {
   }
 
   return block
+}
+
+export async function setAppPhoto(
+  appId: string,
+  photo: Blob,
+  filename: string
+) {
+  console.log(photo.size, photo.type)
+  if (!SLACK_XOXD_TOKEN) throw new Error('No XOXD token set')
+
+  const page = await fetch(`https://api.slack.com/apps/${appId}/general`, {
+    headers: {
+      Cookie: `d=${SLACK_XOXD_TOKEN}`,
+    },
+  })
+  const $ = load(await page.text())
+  const crumbNode = $('[name="crumb"]').first()
+  if (!crumbNode.length)
+    throw new Error('App is uninstalled or XOXD token is invalid')
+  const crumb = crumbNode[0]!.attribs.value!
+
+  let cookie = `d=${SLACK_XOXD_TOKEN}`
+  const cookies = page.headers.getSetCookie()
+  for (const c of cookies) {
+    cookie += '; ' + c.split('; ')[0]!
+  }
+
+  const data = new FormData()
+  data.set('icon', photo, filename)
+  data.set('icon_upload', '1')
+  data.set('MAX_FILE_SIZE', '4000000')
+  data.set('crumb', crumb)
+
+  console.log(...data.entries())
+
+  const res = (await fetch(`https://api.slack.com/apps/${appId}/general`, {
+    method: 'POST',
+    headers: {
+      Origin: 'https://api.slack.com',
+      Cookie: cookie,
+    },
+    body: data,
+  }).then((r) => r.json())) as any
+  console.log(res)
+
+  if (!res.ok) throw new Error(`Failed to upload icon: ${JSON.stringify(res)}`)
 }

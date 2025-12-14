@@ -23,11 +23,13 @@ import {
   generateManifest,
   getActiveConfigToken,
   respond,
+  setAppPhoto,
 } from '../utils/slack'
 import { getWorkflowSteps } from '../utils/workflows'
 import {
   generateStepBranchView,
   generateStepEditView,
+  generateWorkflowDetailsView,
   updateHomeTab,
 } from './blocks'
 import { advanceWorkflow, startWorkflow, type WorkflowStep } from './execute'
@@ -37,6 +39,7 @@ import {
   deleteTriggersByWorkflowId,
   getTriggersByTypeAndString,
   getTriggersWhere,
+  getWorkflowTrigger,
   updateTrigger,
   type Trigger,
 } from '../database/triggers'
@@ -114,6 +117,19 @@ async function handleInteractionInner(
         undefined,
         interaction.trigger_id
       )
+    } else if (actionId === 'edit_workflow_details') {
+      const { id } = JSON.parse(interaction.view!.private_metadata) as {
+        id: number
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow || !workflow.access_token)
+        return respond(interaction, 'The workflow is not found!')
+
+      await slack.views.open({
+        token: workflow.access_token,
+        trigger_id: interaction.trigger_id,
+        view: await generateWorkflowDetailsView(workflow),
+      })
     } else if (actionId === 'manage_step') {
       // the overflow menu to the right of a step on the edit page is clicked
 
@@ -616,6 +632,48 @@ async function handleInteractionInner(
       await updateWorkflow(workflow)
 
       await updateHomeTab(workflow, interaction.user.id)
+    } else if (interaction.view.callback_id === 'workflow_details_edited') {
+      const { id } = JSON.parse(interaction.view.private_metadata) as {
+        id: number
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow || !workflow.access_token) return
+
+      const name = interaction.view.state.values.name!.value!.value!
+      const description =
+        interaction.view.state.values.description!.value!.value!
+      const pfp = interaction.view.state.values.pfp!.value!.files?.[0]
+
+      if (name !== workflow.name || description !== workflow.description) {
+        workflow.name = name
+        workflow.description = description
+        await updateWorkflow(workflow)
+
+        const triggerType =
+          (await getWorkflowTrigger(workflow.id))?.type || 'none'
+        const manifest = generateManifest(workflow.name, triggerType)
+        await slack.apps.manifest.update({
+          token: await getActiveConfigToken(),
+          app_id: workflow.app_id,
+          manifest,
+        })
+
+        await updateHomeTab(workflow, interaction.user.id)
+      }
+
+      if (pfp) {
+        const res = await fetch(pfp.url_private_download!, {
+          headers: {
+            Authorization: `Bearer ${workflow.access_token}`,
+          },
+        }).then((r) => r.blob())
+
+        await setAppPhoto(
+          workflow.app_id,
+          new Blob([res], { type: pfp.mimetype }),
+          pfp.name
+        )
+      }
     }
   }
 }

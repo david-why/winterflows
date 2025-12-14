@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@slack/bolt": "^4.6.0",
+    "cheerio": "^1.1.2",
     "cron-parser": "^5.4.0",
     "zod": "^4.1.13"
   }

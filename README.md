@@ -7,7 +7,8 @@ Winterflows is a (WIP) full replacement to Slack workflows, as [the winter of wo
 - Separate app for each workflow!
 - Custom URL unfurls (aka embeds) for workflow links (`https://winterflows.davidwhy.me/workflow/{id}`)
 - An intuitive GUI for designing workflows
-- Support for ~~all~~ ~~most~~ some workflow steps (still WIP!)
+- Support for ~~all~~ many workflow steps (still WIP!)
+- Conditional steps
 
 ## Demo
 

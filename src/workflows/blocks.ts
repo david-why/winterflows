@@ -172,6 +172,11 @@ export async function generateWorkflowEditView(
         ...runButtons,
         {
           type: 'button',
+          text: { type: 'plain_text', text: 'Edit details' },
+          action_id: 'edit_workflow_details',
+        },
+        {
+          type: 'button',
           text: { type: 'plain_text', text: 'View all your workflows' },
           url: `slack://app?id=${SLACK_APP_ID}&tab=home`,
         },
@@ -859,6 +864,58 @@ export async function generateStepBranchView(
     callback_id: 'step_branch_edit',
     private_metadata: JSON.stringify({ id: workflow.id, stepId }),
     title: { type: 'plain_text', text: 'Edit branching' },
+    submit: { type: 'plain_text', text: 'Save' },
+    blocks,
+  }
+}
+
+export async function generateWorkflowDetailsView(
+  workflow: Workflow
+): Promise<ModalView> {
+  const blocks: KnownBlock[] = [
+    {
+      type: 'input',
+      block_id: 'name',
+      label: { type: 'plain_text', text: 'Name' },
+      element: {
+        type: 'plain_text_input',
+        action_id: 'value',
+        initial_value: workflow.name || undefined,
+      },
+    },
+    {
+      type: 'input',
+      block_id: 'description',
+      label: { type: 'plain_text', text: 'Workflow description' },
+      element: {
+        type: 'plain_text_input',
+        action_id: 'value',
+        initial_value: workflow.description,
+      },
+    },
+    {
+      type: 'input',
+      block_id: 'pfp',
+      optional: true,
+      label: { type: 'plain_text', text: 'Profile image' },
+      hint: {
+        type: 'plain_text',
+        text: 'Please upload a square image betweeen 512x512 and 1024x1024. PNG, JPG, and WEBP formats are supported.',
+      },
+      element: {
+        type: 'file_input',
+        action_id: 'value',
+        filetypes: ['png', 'jpg', 'jpeg', 'webp'],
+        max_files: 1,
+      },
+    },
+  ]
+
+  return {
+    type: 'modal',
+    callback_id: 'workflow_details_edited',
+    private_metadata: JSON.stringify({ id: workflow.id }),
+    title: { type: 'plain_text', text: 'Edit details' },
     submit: { type: 'plain_text', text: 'Save' },
     blocks,
   }
