@@ -1,6 +1,6 @@
 {
   "display_information": {
-    "name": "Winterflows",
+    "name": "Winterflows (example)",
     "description": "Slack workflows pro plus",
     "background_color": "#5e70a6"
   },
@@ -11,25 +11,25 @@
       "messages_tab_read_only_enabled": true
     },
     "bot_user": {
-      "display_name": "Winterflows",
+      "display_name": "Winterflows (example)",
       "always_online": true
     },
     "slash_commands": [
       {
-        "command": "/winterflows-create",
+        "command": "/example-winterflows-create",
         "url": "https://winterflows.davidwhy.me/slack/command",
         "description": "Creates a new workflow",
         "usage_hint": "<name>",
         "should_escape": false
       },
       {
-        "command": "/winterflows",
+        "command": "/example-winterflows",
         "url": "https://winterflows.davidwhy.me/slack/command",
         "description": "View information about the bot",
         "should_escape": false
       },
       {
-        "command": "/winterflows-api",
+        "command": "/example-winterflows-api",
         "url": "https://winterflows.davidwhy.me/slack/command",
         "description": "View information about the API",
         "should_escape": false

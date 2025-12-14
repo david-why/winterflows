@@ -3,6 +3,9 @@
   "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun --watch --no-clear-screen src/index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
