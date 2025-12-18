@@ -64,6 +64,7 @@ async function sendMessageToUser(
   return {
     message: JSON.stringify({ channel: msg.channel!, ts: msg.ts! }),
     component: '',
+    user: '',
   }
 }
 
@@ -93,6 +94,7 @@ async function sendMessageToChannel(
   return {
     message: JSON.stringify({ channel: msg.channel!, ts: msg.ts! }),
     component: '',
+    user: '',
   }
 }
 
@@ -123,7 +125,8 @@ async function replyToMessage(
   }
   return {
     message: JSON.stringify({ channel: msg.channel!, ts: msg.ts! }),
-    component: ''
+    component: '',
+    user: '',
   }
 }
 
@@ -202,6 +205,11 @@ export default {
         required: false,
         type: 'text',
       },
+      user: {
+        name: 'User who pressed the button',
+        required: false,
+        type: 'user',
+      },
     },
   }),
   'message-channel': defineStep(sendMessageToChannel, {
@@ -225,6 +233,11 @@ export default {
         required: false,
         type: 'text',
       },
+      user: {
+        name: 'User who pressed the button',
+        required: false,
+        type: 'user',
+      },
     },
   }),
   'message-reply': defineStep(replyToMessage, {
@@ -247,6 +260,11 @@ export default {
         name: 'Name of button pressed',
         required: false,
         type: 'text',
+      },
+      user: {
+        name: 'User who pressed the button',
+        required: false,
+        type: 'user',
       },
     },
   }),

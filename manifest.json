@@ -17,25 +17,25 @@
     "slash_commands": [
       {
         "command": "/example-winterflows-create",
-        "url": "https://winterflows.davidwhy.me/slack/command",
+        "url": "https://flows.davidwhy.me/slack/command",
         "description": "Creates a new workflow",
         "usage_hint": "<name>",
         "should_escape": false
       },
       {
         "command": "/example-winterflows",
-        "url": "https://winterflows.davidwhy.me/slack/command",
+        "url": "https://flows.davidwhy.me/slack/command",
         "description": "View information about the bot",
         "should_escape": false
       },
       {
         "command": "/example-winterflows-api",
-        "url": "https://winterflows.davidwhy.me/slack/command",
+        "url": "https://flows.davidwhy.me/slack/command",
         "description": "View information about the API",
         "should_escape": false
       }
     ],
-    "unfurl_domains": ["winterflows.davidwhy.me"]
+    "unfurl_domains": ["flows.davidwhy.me"]
   },
   "oauth_config": {
     "scopes": {
@@ -44,13 +44,13 @@
   },
   "settings": {
     "event_subscriptions": {
-      "request_url": "https://winterflows.davidwhy.me/slack/events",
+      "request_url": "https://flows.davidwhy.me/slack/events",
       "bot_events": ["app_home_opened", "link_shared"]
     },
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://winterflows.davidwhy.me/slack/interaction",
-      "message_menu_options_url": "https://winterflows.davidwhy.me/slack/interaction"
+      "request_url": "https://flows.davidwhy.me/slack/interaction",
+      "message_menu_options_url": "https://flows.davidwhy.me/slack/interaction"
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": false,

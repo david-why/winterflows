@@ -560,6 +560,7 @@ async function handleInteractionInner(
         step,
         {
           message: JSON.stringify({ channel, ts }),
+          user: interaction.user.id,
           component: value,
         },
         interaction.trigger_id
