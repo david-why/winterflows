@@ -55,6 +55,7 @@ import {
 } from '../triggers/functions'
 import { sql } from 'bun'
 import { validateCron } from '../utils/cron'
+import { createWorkflowCanvas } from './canvas'
 
 export async function handleInteraction(
   interaction: SlackAction | SlackViewAction | BlockSuggestion
@@ -565,6 +566,17 @@ async function handleInteractionInner(
         },
         interaction.trigger_id
       )
+    } else if (action.action_id === 'create_workflow_canvas') {
+      // the "Create canvas" button on App Home is clicked
+
+      if (action.type !== 'button') return
+
+      const { id } = JSON.parse(action.value!) as { id: number }
+      const workflow = await getWorkflowById(id)
+      if (!workflow || !workflow.access_token) return
+
+      await createWorkflowCanvas(workflow)
+      await updateHomeTab(workflow, interaction.user.id)
     }
   } else if (interaction.type === 'view_submission') {
     if (interaction.view.callback_id === 'step_edit') {

@@ -92,6 +92,20 @@ export async function generateWorkflowEditView(
       style: 'primary',
     })
   }
+  if (workflow.canvas_id) {
+    runButtons.push({
+      type: 'button',
+      text: { type: 'plain_text', text: 'Open in canvas' },
+      url: `https://hackclub.slack.com/docs/T0266FRGM/${workflow.canvas_id}`,
+    })
+  } else {
+    runButtons.push({
+      type: 'button',
+      text: { type: 'plain_text', text: 'Create canvas' },
+      action_id: 'create_workflow_canvas',
+      value: JSON.stringify({ id: workflow.id }),
+    })
+  }
 
   const triggerActions: ActionsBlockElement[] = []
   if (triggerType === 'message') {

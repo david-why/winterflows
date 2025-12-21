@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS workflows (
     client_secret TEXT NOT NULL,
     signing_secret TEXT NOT NULL,
     access_token TEXT,
-    steps TEXT NOT NULL DEFAULT '[]'
+    steps TEXT NOT NULL DEFAULT '[]',
+    list_id TEXT,
+    canvas_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_workflows_app_id ON workflows (app_id);
 

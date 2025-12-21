@@ -11,6 +11,8 @@ export interface Workflow {
   signing_secret: string
   access_token: string | null
   steps: string
+  list_id: string | null
+  canvas_id: string | null
 }
 
 export async function getWorkflowById(id: number) {
@@ -33,7 +35,10 @@ export async function getWorkflowsByCreator(creatorUserId: string) {
 }
 
 export async function addWorkflow(
-  workflow: Omit<Workflow, 'id' | 'steps' | 'description'>
+  workflow: Omit<
+    Workflow,
+    'id' | 'steps' | 'description' | 'list_id' | 'canvas_id'
+  >
 ) {
   const result = await sql<[Workflow]>`INSERT INTO workflows ${sql(
     workflow
