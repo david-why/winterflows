@@ -55,7 +55,7 @@ import {
 } from '../triggers/functions'
 import { sql } from 'bun'
 import { validateCron } from '../utils/cron'
-import { createWorkflowCanvas } from './canvas'
+import { createWorkflowCanvas, deleteWorkflowCanvas } from './canvas'
 
 export async function handleInteraction(
   interaction: SlackAction | SlackViewAction | BlockSuggestion
@@ -567,7 +567,7 @@ async function handleInteractionInner(
         interaction.trigger_id
       )
     } else if (action.action_id === 'create_workflow_canvas') {
-      // the "Create canvas" button on App Home is clicked
+      // the "Create canvas" or "Reset canvas" button on App Home is clicked
 
       if (action.type !== 'button') return
 
@@ -575,6 +575,7 @@ async function handleInteractionInner(
       const workflow = await getWorkflowById(id)
       if (!workflow || !workflow.access_token) return
 
+      await deleteWorkflowCanvas(workflow)
       await createWorkflowCanvas(workflow)
       await updateHomeTab(workflow, interaction.user.id)
     }

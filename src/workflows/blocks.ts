@@ -95,6 +95,13 @@ export async function generateWorkflowEditView(
   if (workflow.canvas_id) {
     runButtons.push({
       type: 'button',
+      text: { type: 'plain_text', text: 'Reset canvas' },
+      action_id: 'create_workflow_canvas',
+      value: JSON.stringify({ id: workflow.id }),
+      style: 'danger',
+    })
+    runButtons.push({
+      type: 'button',
       text: { type: 'plain_text', text: 'Open in canvas' },
       url: `https://hackclub.slack.com/docs/T0266FRGM/${workflow.canvas_id}`,
     })

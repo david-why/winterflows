@@ -58,7 +58,7 @@ export function generateManifest(
     settings: {
       event_subscriptions: {
         request_url: `${EXTERNAL_URL}/slack/events`,
-        bot_events: ['app_home_opened', ...extraEvents],
+        bot_events: ['app_home_opened', 'file_change', ...extraEvents],
       },
       interactivity: {
         is_enabled: true,

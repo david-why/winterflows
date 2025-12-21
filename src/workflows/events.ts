@@ -4,6 +4,7 @@ import type { Workflow } from '../database/workflows'
 import { updateHomeTab } from './blocks'
 import { getTriggersByTypeAndString } from '../database/triggers'
 import { executeTriggerFunction } from '../triggers/functions'
+import { onWorkflowListUpdated } from './canvas'
 
 export async function handleWorkflowEvent({
   event,
@@ -19,6 +20,10 @@ export async function handleWorkflowEvent({
     if (event.tab !== 'home') return
 
     await updateHomeTab(workflow, event.user)
+  } else if (event.type === 'file_change') {
+    if (event.file_id !== workflow.list_id) return
+
+    await onWorkflowListUpdated(workflow)
   } else if (event.type === 'message') {
     const triggers = await getTriggersByTypeAndString('message', event.channel)
 
