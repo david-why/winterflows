@@ -12,7 +12,7 @@ Winterflows is a (WIP) full replacement to Slack workflows, as [the winter of wo
 
 ## Demo
 
-You can use the `/winterflows` command to try out the bot yourself, or watch [the demo video](https://hc-cdn.hel1.your-objectstorage.com/s/v3/7942502507f18a68b3c0ef09bde7d26502534198_winterflows.mp4) to see the main features!
+You can use the `/winterflows` command to try out the bot yourself, or watch [the demo video](https://hc-cdn.hel1.your-objectstorage.com/s/v3/8d8e49fb46eaa62c_flowdemo.mp4) to see the main features!
 
 ## Setup instructions
 
