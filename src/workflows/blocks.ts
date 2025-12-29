@@ -16,7 +16,7 @@ import { generateRandomId, truncateText } from '../utils/formatting'
 import { getTriggersWhere, getWorkflowTrigger } from '../database/triggers'
 import { sql } from 'bun'
 
-const { EXTERNAL_URL, SLACK_APP_ID } = process.env
+const { EXTERNAL_URL, SLACK_APP_ID, DISABLE_CANVAS } = process.env
 
 export interface HomeTabBlockOptions {
   triggerBlocks?: KnownBlock[]
@@ -92,26 +92,28 @@ export async function generateWorkflowEditView(
       style: 'primary',
     })
   }
-  if (workflow.canvas_id) {
-    runButtons.push({
-      type: 'button',
-      text: { type: 'plain_text', text: 'Reset canvas' },
-      action_id: 'create_workflow_canvas',
-      value: JSON.stringify({ id: workflow.id }),
-      style: 'danger',
-    })
-    runButtons.push({
-      type: 'button',
-      text: { type: 'plain_text', text: 'Open in canvas' },
-      url: `https://hackclub.slack.com/docs/T0266FRGM/${workflow.canvas_id}`,
-    })
-  } else {
-    runButtons.push({
-      type: 'button',
-      text: { type: 'plain_text', text: 'Create canvas' },
-      action_id: 'create_workflow_canvas',
-      value: JSON.stringify({ id: workflow.id }),
-    })
+  if (!DISABLE_CANVAS) {
+    if (workflow.canvas_id) {
+      runButtons.push({
+        type: 'button',
+        text: { type: 'plain_text', text: 'Reset canvas' },
+        action_id: 'create_workflow_canvas',
+        value: JSON.stringify({ id: workflow.id }),
+        style: 'danger',
+      })
+      runButtons.push({
+        type: 'button',
+        text: { type: 'plain_text', text: 'Open in canvas' },
+        url: `https://hackclub.slack.com/docs/T0266FRGM/${workflow.canvas_id}`,
+      })
+    } else {
+      runButtons.push({
+        type: 'button',
+        text: { type: 'plain_text', text: 'Create canvas' },
+        action_id: 'create_workflow_canvas',
+        value: JSON.stringify({ id: workflow.id }),
+      })
+    }
   }
 
   const triggerActions: ActionsBlockElement[] = []
