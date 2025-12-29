@@ -3,9 +3,8 @@ import { sql } from 'bun'
 export interface WorkflowExecution {
   id: number
   trigger_user_id: string
-  workflow_id: number
+  version_id: number
   trigger_id: string | null
-  steps: string
   step_index: number
   state: string
 }

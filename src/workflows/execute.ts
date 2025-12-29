@@ -6,6 +6,11 @@ import {
   updateWorkflowExecution,
   type WorkflowExecution,
 } from '../database/workflow_executions'
+import {
+  addWorkflowVersion,
+  getLatestWorkflowVersion,
+  getWorkflowVersionById,
+} from '../database/workflow_versions'
 import { getWorkflowById, type Workflow } from '../database/workflows'
 import { replaceRichText, replaceText } from '../utils/slack'
 import { getWorkflowSteps } from '../utils/workflows'
@@ -39,10 +44,21 @@ export async function startWorkflow(
 
   console.log(`Workflow ${workflow.id} started by ${user}`)
 
+  let version = await getLatestWorkflowVersion(workflow.id)
+  if (
+    !version ||
+    !Bun.deepEquals(getWorkflowSteps(version), getWorkflowSteps(workflow))
+  ) {
+    // FIXME: don't create new versions
+    version = await addWorkflowVersion({
+      workflow_id: workflow.id,
+      steps: workflow.steps,
+    })
+  }
+
   const execution = await addWorkflowExecution({
-    workflow_id: workflow.id,
+    version_id: version.id,
     trigger_user_id: user,
-    steps: workflow.steps,
     trigger_id: trigger_id || null,
     state: JSON.stringify({
       outputs: {},
@@ -54,13 +70,14 @@ export async function startWorkflow(
 }
 
 export async function proceedWorkflow(execution: WorkflowExecution) {
-  const workflow = await getWorkflowById(execution.workflow_id)
-  if (!workflow) {
+  const version = await getWorkflowVersionById(execution.version_id)
+  if (!version) {
     await deleteWorkflowExecutionById(execution.id)
     return
   }
+  const workflow = (await getWorkflowById(version.workflow_id))!
 
-  const steps = getWorkflowSteps(execution)
+  const steps = getWorkflowSteps(version)
 
   if (execution.step_index >= steps.length) {
     // workflow done
@@ -158,7 +175,8 @@ export async function advanceWorkflow(
 ) {
   const execution = await getWorkflowExecutionById(executionId)
   if (!execution) return
-  const steps = getWorkflowSteps(execution)
+  const version = (await getWorkflowVersionById(execution.version_id))!
+  const steps = getWorkflowSteps(version)
 
   const stepIndex = steps.findIndex((s) => s.id === stepId)
   if (stepIndex !== execution.step_index) {
