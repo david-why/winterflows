@@ -14,17 +14,26 @@ CREATE TABLE IF NOT EXISTS workflows (
 );
 CREATE INDEX IF NOT EXISTS idx_workflows_app_id ON workflows (app_id);
 
-CREATE TABLE IF NOT EXISTS workflow_executions (
+CREATE TABLE workflow_versions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-    trigger_user_id TEXT NOT NULL,
     workflow_id INTEGER NOT NULL,
-    trigger_id TEXT,
     steps TEXT NOT NULL,
-    step_index INTEGER NOT NULL DEFAULT 0, -- index of next step
-    state TEXT NOT NULL,
+    created_at REAL NOT NULL,
     FOREIGN KEY (workflow_id) REFERENCES workflows (id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_workflow_executions_workflow_id ON workflow_executions (workflow_id);
+CREATE INDEX idx_workflow_versions_workflow_id ON workflow_versions (workflow_id);
+CREATE INDEX idx_workflow_versions_created_at ON workflow_versions (created_at);
+
+CREATE TABLE IF NOT EXISTS workflow_executions (
+    id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
+    version_id INTEGER NOT NULL,
+    trigger_user_id TEXT NOT NULL,
+    trigger_id TEXT,
+    step_index INTEGER NOT NULL DEFAULT 0, -- index of next step
+    state TEXT NOT NULL,
+    FOREIGN KEY (version_id) REFERENCES workflow_versions (id)
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_executions_version_id ON workflow_executions (version_id);
 
 CREATE TABLE IF NOT EXISTS config_tokens (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
