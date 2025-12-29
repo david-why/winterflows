@@ -56,6 +56,10 @@ import {
 import { sql } from 'bun'
 import { validateCron } from '../utils/cron'
 import { createWorkflowCanvas, deleteWorkflowCanvas } from './canvas'
+import {
+  addWorkflowVersion,
+  getLatestWorkflowVersion,
+} from '../database/workflow_versions'
 
 export async function handleInteraction(
   interaction: SlackAction | SlackViewAction | BlockSuggestion
@@ -578,6 +582,32 @@ async function handleInteractionInner(
       await deleteWorkflowCanvas(workflow)
       await createWorkflowCanvas(workflow)
       await updateHomeTab(workflow, interaction.user.id)
+    } else if (action.action_id === 'publish_workflow') {
+      // the "Publish workflow" button is clicked on App Home
+
+      if (action.type !== 'button') return
+
+      const { id } = JSON.parse(interaction.view!.private_metadata) as {
+        id: number
+      }
+      const workflow = await getWorkflowById(id)
+      if (!workflow) return
+
+      const lastVersion = await getLatestWorkflowVersion(id)
+      if (
+        !lastVersion ||
+        !Bun.deepEquals(
+          getWorkflowSteps(lastVersion),
+          getWorkflowSteps(workflow)
+        )
+      ) {
+        await addWorkflowVersion({
+          workflow_id: id,
+          steps: workflow.steps,
+        })
+
+        await updateHomeTab(workflow, interaction.user.id)
+      }
     }
   } else if (interaction.type === 'view_submission') {
     if (interaction.view.callback_id === 'step_edit') {

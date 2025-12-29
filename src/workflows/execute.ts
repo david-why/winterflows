@@ -45,16 +45,7 @@ export async function startWorkflow(
   console.log(`Workflow ${workflow.id} started by ${user}`)
 
   let version = await getLatestWorkflowVersion(workflow.id)
-  if (
-    !version ||
-    !Bun.deepEquals(getWorkflowSteps(version), getWorkflowSteps(workflow))
-  ) {
-    // FIXME: don't create new versions
-    version = await addWorkflowVersion({
-      workflow_id: workflow.id,
-      steps: workflow.steps,
-    })
-  }
+  if (!version) return
 
   const execution = await addWorkflowExecution({
     version_id: version.id,

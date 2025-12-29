@@ -15,6 +15,7 @@ import slack from '../clients/slack'
 import { generateRandomId, truncateText } from '../utils/formatting'
 import { getTriggersWhere, getWorkflowTrigger } from '../database/triggers'
 import { sql } from 'bun'
+import { getLatestWorkflowVersion } from '../database/workflow_versions'
 
 const { EXTERNAL_URL, SLACK_APP_ID, DISABLE_CANVAS } = process.env
 
@@ -180,6 +181,8 @@ export async function generateWorkflowEditView(
   }
   if (options.triggerBlocks) triggerBlocks.push(...options.triggerBlocks)
 
+  const latestVersion = await getLatestWorkflowVersion(workflow.id)
+
   return [
     {
       type: 'header',
@@ -187,11 +190,30 @@ export async function generateWorkflowEditView(
     },
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: workflow.description },
+      text: {
+        type: 'mrkdwn',
+        text: `${workflow.description}\n\n_(Current version ID: ${latestVersion?.id})_`,
+      },
     },
     {
       type: 'actions',
       elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Publish version' },
+          action_id: 'publish_workflow',
+          style: 'primary',
+          confirm: {
+            title: { type: 'plain_text', text: 'Publish this version?' },
+            text: {
+              type: 'mrkdwn',
+              text: 'This will cause all future runs of the workflow to immediately use these steps.',
+            },
+            confirm: { type: 'plain_text', text: 'Publish' },
+            deny: { type: 'plain_text', text: 'Cancel' },
+            style: 'primary',
+          },
+        },
         ...runButtons,
         {
           type: 'button',
